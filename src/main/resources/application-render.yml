@@ -1,0 +1,13 @@
+micronaut:
+  application:
+    name: kleo
+
+datasources:
+  default:
+    url: jdbc:postgresql://dpg-d6h9ra0gjchc73ck8o80-a/micronaut_lr9f
+    username: micronaut
+    password: wMse0riiK4O5z6V7gdcv86QePEPkNzZB
+    driver-class-name: org.postgresql.Driver
+    db-type: postgres
+    dialect: POSTGRES
+    schema-generate: CREATE
