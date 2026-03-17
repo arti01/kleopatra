@@ -1,0 +1,23 @@
+micronaut:
+  application:
+    name: kleopatra
+
+datasources:
+  default:
+    url: "jdbc:postgresql://stacja:5434,localhost:5432,localhost:5436/testy"
+    username: ${DB_USER:postgres}
+    password: ${DB_PASS:pkkk}
+    driver-class-name: org.postgresql.Driver
+    db-type: postgres
+    dialect: POSTGRES
+    schema-generate: CREATE
+    maximum-pool-size: 10
+    minimum-idle: 5
+    max-lifetime: 300000
+    connection-timeout: 5000
+    validation-timeout: 5000
+    connection-test-query: "SELECT 1"
+    data-source-properties:
+      targetServerType: "preferPrimary"
+      hostRecheckSeconds: 5
+      tcpKeepAlive: true

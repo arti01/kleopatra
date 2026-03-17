@@ -1,0 +1,98 @@
+plugins {
+    id("io.micronaut.application") version "4.6.2"
+    id("com.gradleup.shadow") version "8.3.9"
+    id("io.micronaut.test-resources") version "4.6.2"
+    id("io.micronaut.aot") version "4.6.2"
+}
+
+version = "0.1"
+group = "arti.example"
+
+micronaut {
+    testResources {
+        enabled = false
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    annotationProcessor("io.micronaut.data:micronaut-data-processor")
+    annotationProcessor("io.micronaut:micronaut-http-validation")
+    annotationProcessor("io.micronaut.serde:micronaut-serde-processor")
+    annotationProcessor("io.micronaut.validation:micronaut-validation-processor")
+
+    implementation("io.micronaut.data:micronaut-data-jdbc")
+    implementation("io.micronaut.serde:micronaut-serde-jackson")
+    implementation("io.micronaut.sql:micronaut-jdbc-hikari")
+    implementation("io.micronaut.validation:micronaut-validation")
+
+    implementation("jakarta.persistence:jakarta.persistence-api")
+    implementation("org.postgresql:postgresql:42.7.2")
+
+    implementation("jakarta.validation:jakarta.validation-api")
+
+    implementation("org.bouncycastle:bcpg-jdk18on:1.77")
+
+    compileOnly("io.micronaut:micronaut-http-client")
+    runtimeOnly("ch.qos.logback:logback-classic")
+    runtimeOnly("org.yaml:snakeyaml")
+    testImplementation("io.micronaut:micronaut-http-client")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+
+
+application {
+    mainClass = "arti.example.Application"
+}
+
+java {
+    sourceCompatibility = JavaVersion.toVersion("21")
+    targetCompatibility = JavaVersion.toVersion("21")
+}
+
+
+
+
+graalvmNative.toolchainDetection = false
+
+
+
+
+
+micronaut {
+    runtime("netty")
+    testRuntime("junit5")
+    processing {
+        incremental(true)
+        annotations("arti.example.*")
+    }
+    aot {
+        // Please review carefully the optimizations enabled below
+        // Check https://micronaut-projects.github.io/micronaut-aot/latest/guide/ for more details
+        optimizeServiceLoading = false
+        convertYamlToJava = false
+        precomputeOperations = true
+        cacheEnvironment = true
+        optimizeClassLoading = true
+        deduceEnvironment = true
+        optimizeNetty = true
+        replaceLogbackXml = true
+    }
+
+}
+
+
+tasks.named("dockerfileNative") {
+    jdkVersion = "21"
+}
+
+
+
+
+
+
+

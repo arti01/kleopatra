@@ -1,0 +1,18 @@
+# Wygeneruj nową parę kluczy (wybierz RSA, 3072 lub 4096 bitów)
+# Ustaw datę ważności (np. 1y dla roku), żeby sprawdzić czy PgpUtils ją wyłapie!
+gpg --full-generate-key
+
+# Pobierz ID swojego klucza (to te 8 lub 16 znaków, np. ABC12345)
+gpg --list-public-keys
+
+# Eksportuj klucz do formatu ASCII (tzw. Armored)
+gpg --armor --export TWOJE_ID_KLUCZA > moj_klucz.asc
+
+curl -X POST "http://stacja:8080/keys/moj-testowy-klucz" \
+     -H "Content-Type: text/plain" \
+     --data-binary "@moj_klucz.asc"
+
+
+curl -X POST "http://stacja:8080/keys/encrypt" \
+     -H "X-User-Email: arti4077@gmail.com" \
+     -F "file=@tajne.txt" > tajne.txt.asc
