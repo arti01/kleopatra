@@ -1,6 +1,8 @@
 package arti.example.service;
 
+import arti.example.model.KeyImportLogEntity;
 import arti.example.model.PublicKeyEntity;
+import arti.example.repository.KeyImportLogRepository;
 import arti.example.repository.PublicKeyRepository;
 import arti.example.utils.PgpUtils;
 import io.micronaut.http.HttpStatus;
@@ -14,28 +16,62 @@ import java.util.Optional;
 public class PublicKeyService {
 
     private final PublicKeyRepository repository;
+    private final KeyImportLogRepository logRepository;
 
-    public PublicKeyService(PublicKeyRepository repository) {
+    public PublicKeyService(PublicKeyRepository repository, KeyImportLogRepository logRepository) {
         this.repository = repository;
+        this.logRepository = logRepository;
     }
 
     public PublicKeyEntity saveKey(String alias, String pgpContent) {
-        if (repository.findByAlias(alias).isPresent()) {
-            throw new HttpStatusException(HttpStatus.CONFLICT, "Alias '" + alias + "' już istnieje!");
-        }
-        // Wyciągamy dane z klucza PGP
-        Instant expiryDate = PgpUtils.extractExpiryDate(pgpContent);
-        String email = PgpUtils.extractEmail(pgpContent); // Tę metodę dodaj do PgpUtils poniżej
+        String error = null;
+        PublicKeyEntity savedEntity = null;
 
-        PublicKeyEntity entity = new PublicKeyEntity(
-                null,       // id
-                alias,      // alias
-                email,      // email (NOWOŚĆ)
-                pgpContent, // publicKeyPem
-                null,       // createdAt (Micronaut sam to uzupełni)
-                expiryDate  // expiresAt
-        );
-        return repository.save(entity);
+        try {
+            // 1. Wyciąganie danych
+            String fingerprint = PgpUtils.extractFingerprint(pgpContent);
+            Instant expiryDate = PgpUtils.extractExpiryDate(pgpContent);
+            String email = PgpUtils.extractEmail(pgpContent);
+
+            // 2. Walidacja: Czy nie wygasł?
+            if (expiryDate != null && expiryDate.isBefore(Instant.now())) {
+                error = "Klucz już wygasł (data: " + expiryDate + ")";
+            }
+            // 3. Walidacja: Czy fingerprint istnieje?
+            else if (repository.findByFingerprint(fingerprint).isPresent()) {
+                error = "Klucz o tym fingerprincie już istnieje!";
+            }
+            // 4. Walidacja: Czy alias istnieje?
+            else if (repository.findByAlias(alias).isPresent()) {
+                error = "Alias '" + alias + "' jest już zajęty!";
+            }
+
+            if (error == null) {
+                PublicKeyEntity entity = new PublicKeyEntity(
+                        null, alias, email, fingerprint, pgpContent, null, expiryDate
+                );
+                savedEntity = repository.save(entity);
+            }
+
+        } catch (Exception e) {
+            error = "Błąd techniczny PGP: " + e.getMessage();
+        }
+
+        // ZAPIS LOGU (zawsze!)
+        logRepository.save(new KeyImportLogEntity(
+                null,
+                savedEntity, // Przekazujemy cały obiekt (lub null)
+                null,        // attemptTimestamp (Micronaut uzupełni @DateCreated)
+                savedEntity != null,
+                error,
+                alias
+        ));
+
+        if (error != null) {
+            throw new HttpStatusException(HttpStatus.BAD_REQUEST, error);
+        }
+
+        return savedEntity;
     }
 
     public Optional<PublicKeyEntity> getKey(String alias) {

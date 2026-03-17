@@ -25,4 +25,5 @@ public interface PublicKeyRepository extends CrudRepository<PublicKeyEntity, Lon
             String email,
             Instant now
     );
+    Optional<PublicKeyEntity> findByFingerprint(String fingerprint);
 }
