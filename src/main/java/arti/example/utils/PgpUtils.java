@@ -6,10 +6,7 @@ import org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator;
 import org.bouncycastle.openpgp.operator.jcajce.JcePGPDataEncryptorBuilder;
 import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyKeyEncryptionMethodGenerator;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -152,5 +149,19 @@ public class PgpUtils {
             return hexString.toString().toUpperCase();
         }
         throw new IllegalArgumentException("Nie znaleziono klucza w bloku PGP.");
+    }
+
+    public static String transformToArmoredString(PGPPublicKeyRing ring) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             ArmoredOutputStream aos = new ArmoredOutputStream(baos)) {
+
+            // Zapisujemy cały "pierścień" (klucz główny + podklucze)
+            ring.encode(aos);
+            aos.close(); // Ważne: zamknięcie dopisuje stopkę -----END PGP...
+
+            return baos.toString();
+        } catch (IOException e) {
+            throw new RuntimeException("Błąd podczas generowania bloku ASCII: " + e.getMessage());
+        }
     }
 }

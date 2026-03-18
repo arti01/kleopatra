@@ -10,4 +10,26 @@ datasources:
     driver-class-name: org.postgresql.Driver
     db-type: postgres
     dialect: POSTGRES
-    schema-generate: CREATE
+    schema-generate: NONE
+    maximum-pool-size: 10
+    minimum-idle: 5
+    max-lifetime: 300000
+    idle-timeout: 240000 #musi być nizsze niz max-life
+    connection-timeout: 5000
+    validation-timeout: 5000
+    connection-test-query: "SELECT 1"
+    data-source-properties:
+      targetServerType: "preferPrimary"
+      hostRecheckSeconds: 5
+      tcpKeepAlive: true
+
+flyway:
+  datasources:
+    default: # To musi pasować do nazwy Twojego głównego datasource (default)
+      enabled: true
+      url: jdbc:postgresql://dpg-d6h9ra0gjchc73ck8o80-a/micronaut_lr9f
+      username: micronaut
+      password: wMse0riiK4O5z6V7gdcv86QePEPkNzZB
+      locations:
+        - classpath:db/migration
+      baseline-on-migrate: true

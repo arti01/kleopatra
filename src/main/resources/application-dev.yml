@@ -10,10 +10,11 @@ datasources:
     driver-class-name: org.postgresql.Driver
     db-type: postgres
     dialect: POSTGRES
-    schema-generate: CREATE
+    schema-generate: NONE
     maximum-pool-size: 10
     minimum-idle: 5
     max-lifetime: 300000
+    idle-timeout: 240000 #musi być nizsze niz max-life
     connection-timeout: 5000
     validation-timeout: 5000
     connection-test-query: "SELECT 1"
@@ -21,3 +22,14 @@ datasources:
       targetServerType: "preferPrimary"
       hostRecheckSeconds: 5
       tcpKeepAlive: true
+
+flyway:
+  datasources:
+    default: # To musi pasować do nazwy Twojego głównego datasource (default)
+      enabled: true
+      url: "jdbc:postgresql://stacja:5434/testy"
+      username: postgres # Twój admin
+      password: admin_password
+      locations:
+        - classpath:db/migration
+      baseline-on-migrate: true

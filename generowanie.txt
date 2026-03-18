@@ -8,11 +8,18 @@ gpg --list-public-keys
 # Eksportuj klucz do formatu ASCII (tzw. Armored)
 gpg --armor --export TWOJE_ID_KLUCZA > moj_klucz.asc
 
-curl -X POST "http://stacja:8080/keys/moj-testowy-klucz" \
+# import klucza
+curl -X POST "http://stacja:8080/keys/import/moj-testowy-klucz" \
      -H "Content-Type: text/plain" \
      --data-binary "@moj_klucz.asc"
 
-
+#szyfrowanie
 curl -X POST "http://stacja:8080/keys/encrypt" \
      -H "X-User-Email: arti4077@gmail.com" \
      -F "file=@tajne.txt" > tajne.txt.asc
+
+#export kluczy
+gpg --armor --export > moje_wszystkie_klucze.asc
+
+#hurtowy import kluczy
+curl -X POST "http://localhost:8080/keys/mass-import" -H "Content-Type: text/plain" --data-binary "@moje_wszystkie_klucze.asc"

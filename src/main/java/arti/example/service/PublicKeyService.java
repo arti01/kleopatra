@@ -7,6 +7,8 @@ import arti.example.repository.PublicKeyRepository;
 import arti.example.utils.PgpUtils;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.exceptions.HttpStatusException;
+import io.micronaut.transaction.TransactionDefinition;
+import io.micronaut.transaction.annotation.Transactional;
 import jakarta.inject.Singleton;
 
 import java.time.Instant;
@@ -23,55 +25,76 @@ public class PublicKeyService {
         this.logRepository = logRepository;
     }
 
-    public PublicKeyEntity saveKey(String alias, String pgpContent) {
+    public KeyImportLogEntity saveKey(String alias, String pgpContent) {
         String error = null;
-        PublicKeyEntity savedEntity = null;
+        PublicKeyEntity existingOrSavedEntity = null;
 
         try {
-            // 1. Wyciąganie danych
             String fingerprint = PgpUtils.extractFingerprint(pgpContent);
             Instant expiryDate = PgpUtils.extractExpiryDate(pgpContent);
             String email = PgpUtils.extractEmail(pgpContent);
 
-            // 2. Walidacja: Czy nie wygasł?
+            // 1. Walidacja: Czy nie wygasł?
             if (expiryDate != null && expiryDate.isBefore(Instant.now())) {
                 error = "Klucz już wygasł (data: " + expiryDate + ")";
             }
-            // 3. Walidacja: Czy fingerprint istnieje?
-            else if (repository.findByFingerprint(fingerprint).isPresent()) {
-                error = "Klucz o tym fingerprincie już istnieje!";
-            }
-            // 4. Walidacja: Czy alias istnieje?
-            else if (repository.findByAlias(alias).isPresent()) {
-                error = "Alias '" + alias + "' jest już zajęty!";
+            else {
+                // 2. Szukamy duplikatu po fingerprincie
+                var duplicateFingerprint = repository.findByFingerprint(fingerprint);
+                if (duplicateFingerprint.isPresent()) {
+                    error = "Klucz o tym fingerprincie już istnieje!";
+                    existingOrSavedEntity = duplicateFingerprint.get(); // ŁĄCZYMY Z ISTNIEJĄCYM
+                }
+                else {
+                    // 3. Szukamy duplikatu po aliasie
+                    var duplicateAlias = repository.findByAlias(alias);
+                    if (duplicateAlias.isPresent()) {
+                        error = "Alias '" + alias + "' jest już zajęty!";
+                        existingOrSavedEntity = duplicateAlias.get(); // ŁĄCZYMY Z ISTNIEJĄCYM
+                    }
+                }
             }
 
+            // Jeśli nie ma błędów, zapisujemy nowy
             if (error == null) {
                 PublicKeyEntity entity = new PublicKeyEntity(
                         null, alias, email, fingerprint, pgpContent, null, expiryDate
                 );
-                savedEntity = repository.save(entity);
+                existingOrSavedEntity = repository.save(entity);
             }
 
         } catch (Exception e) {
             error = "Błąd techniczny PGP: " + e.getMessage();
+            e.printStackTrace();
         }
 
-        // ZAPIS LOGU (zawsze!)
-        logRepository.save(new KeyImportLogEntity(
-                null,
-                savedEntity, // Przekazujemy cały obiekt (lub null)
-                null,        // attemptTimestamp (Micronaut uzupełni @DateCreated)
-                savedEntity != null,
-                error,
-                alias
-        ));
+        // ZAPIS LOGU - teraz existingOrSavedEntity może być kluczem z bazy LUB nowym kluczem
+        return saveLogIndependent(existingOrSavedEntity, error, alias);
+    }
 
-        if (error != null) {
-            throw new HttpStatusException(HttpStatus.BAD_REQUEST, error);
+    @Transactional(propagation = TransactionDefinition.Propagation.REQUIRES_NEW)
+    public KeyImportLogEntity saveLogIndependent(PublicKeyEntity entity, String error, String alias) {
+        try {
+            //System.out.println(">>> PRÓBA ZAPISU LOGU DLA ALIASU: " + alias);
+
+            KeyImportLogEntity log = new KeyImportLogEntity(
+                    null,
+                    entity,
+                    null, // importDate - upewnij się, że w bazie to TIMESTAMP
+                    error == null,
+                    error,
+                    alias
+            );
+
+            // Tutaj może nastąpić wybuch, jeśli pola się nie zgadzają!
+            return logRepository.save(log);
+
+        } catch (Exception e) {
+            System.err.println("!!! KRYTYCZNY BŁĄD PODCZAS ZAPISU LOGU !!!");
+            System.err.println("Wiadomość: " + e.getMessage());
+            e.printStackTrace(); // To pokaże nam brakujące kolumny w SQL
+            return null;
         }
-
-        return savedEntity;
     }
 
     public Optional<PublicKeyEntity> getKey(String alias) {

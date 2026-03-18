@@ -1,5 +1,6 @@
 package arti.example.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.micronaut.core.annotation.Nullable;
 import io.micronaut.data.annotation.*;
 import io.micronaut.serde.annotation.Serdeable;
@@ -15,6 +16,7 @@ public record KeyImportLogEntity(
 
         @Nullable
         @Relation(Relation.Kind.MANY_TO_ONE) // Relacja Many-to-One
+        @JsonIgnoreProperties({"publicKeyPem"})
         PublicKeyEntity publicKey,
 
         @DateCreated
