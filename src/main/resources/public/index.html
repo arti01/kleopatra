@@ -1,0 +1,56 @@
+<head>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
+    <script src="https://unpkg.com/htmx.org/dist/ext/client-side-templates.js"></script>
+    <script src="https://unpkg.com/mustache@latest"></script>
+</head>
+
+<body>
+<div hx-ext="client-side-templates">
+    <div style="margin-bottom: 20px;">
+        <label>Wybierz plik klucza PGP (.asc, .pub, .txt):</label><br>
+        <input type="file" id="keyFile" accept=".asc,.pub,.txt">
+    </div>
+
+    <button hx-post="/keys/import/moj-alias"
+            hx-target="#result"
+            mustache-template="log-template"
+            id="importBtn">
+        Importuj Plik
+    </button>
+
+    <div id="result"></div>
+</div>
+
+<script>
+    document.body.addEventListener('htmx:configRequest', function(evt) {
+        if (evt.detail.elt.id === 'importBtn') {
+            const fileInput = document.getElementById('keyFile');
+
+            // Sprawdzamy, czy użytkownik wybrał plik
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+
+                // Zatrzymujemy standardowe zapytanie HTMX, by wysłać je sami po odczytaniu pliku
+                evt.preventDefault();
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const content = e.target.result;
+
+                    // Ręcznie odpalamy HTMX z zawartością pliku w Body
+                    htmx.ajax('POST', evt.detail.path, {
+                        target: '#result',
+                        values: content, // To pójdzie jako Body
+                        headers: { 'Content-Type': 'text/plain' }
+                    });
+                };
+                reader.readAsText(file);
+            } else {
+                alert("Proszę najpierw wybrać plik!");
+                evt.preventDefault();
+            }
+        }
+    });
+</script>
+</body>

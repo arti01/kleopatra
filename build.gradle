@@ -52,18 +52,10 @@ application {
 }
 
 java {
-    sourceCompatibility = JavaVersion.toVersion("21")
-    targetCompatibility = JavaVersion.toVersion("21")
+    sourceCompatibility = JavaVersion.toVersion("25")
+    targetCompatibility = JavaVersion.toVersion("25")
 }
-
-
-
-
 graalvmNative.toolchainDetection = false
-
-
-
-
 
 micronaut {
     runtime("netty")
@@ -87,14 +79,33 @@ micronaut {
 
 }
 
+graalvmNative {
+    binaries {
+        main {
+            // Nazwa pliku wynikowego (Twoja Kleopatra)
+            imageName = 'kleopatra-app'
 
-tasks.named("dockerfileNative") {
-    jdkVersion = "21"
+            // Ważne dla OCP: statyczne linkowanie bibliotek, jeśli Mandrel tego wymaga
+            sharedLibrary = false
+
+            // Optymalizacje (wykorzystaj potencjał JDK 25)
+            buildArgs.add('-O4')
+            buildArgs.add('--enable-url-protocols=http,https')
+
+            // To może pomóc na błędy z pamięcią na OCP:
+            // Ogranicza zużycie RAM przez proces kompilacji (np. do 4GB)
+            buildArgs.add('-J-Xmx4g')
+
+            // Jeśli używasz wirtualnych wątków (Loom)
+            buildArgs.add('--enable-preview')
+        }
+    }
 }
 
+tasks.named("build") {
+    dependsOn("nativeCompile")
+}
 
-
-
-
-
-
+tasks.named("dockerfileNative") {
+    jdkVersion = "25"
+}
